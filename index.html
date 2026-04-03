@@ -1,9 +1,512 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Embassy Alerts</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>US Embassy Alert Tracker — Europe</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f7f6f3;
+    --surface: #ffffff;
+    --surface2: #f0efe9;
+    --border: rgba(0,0,0,0.10);
+    --border-strong: rgba(0,0,0,0.18);
+    --text: #1a1a18;
+    --text-muted: #6b6b65;
+    --text-hint: #9e9e96;
+    --blue: #185FA5;
+    --blue-light: #E6F1FB;
+    --blue-dark: #0C447C;
+    --blue-mid: #378ADD;
+    --green: #3B6D11;
+    --green-light: #EAF3DE;
+    --green-mid: #639922;
+    --orange: #d45f00;
+    --radius: 8px;
+    --radius-lg: 12px;
+  }
+
+  body {
+    font-family: 'Georgia', 'Times New Roman', serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .header-left { display: flex; align-items: center; gap: 14px; }
+
+  .flag-icon {
+    width: 36px; height: 36px;
+    background: linear-gradient(180deg, #B22234 33%, #fff 33%, #fff 66%, #B22234 66%);
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .flag-icon::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 40%; height: 55%;
+    background: #3C3B6E;
+  }
+
+  .header-title { font-size: 17px; font-weight: normal; letter-spacing: 0.01em; color: var(--text); }
+  .header-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; font-family: 'Arial', sans-serif; }
+
+  #search {
+    padding: 6px 12px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius);
+    font-size: 13px;
+    font-family: 'Arial', sans-serif;
+    background: var(--surface);
+    color: var(--text);
+    width: 180px;
+    outline: none;
+  }
+  #search:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(24,95,165,0.12); }
+
+  .legend {
+    display: flex; gap: 16px; flex-wrap: wrap;
+    padding: 8px 24px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--text-muted);
+    font-family: 'Arial', sans-serif;
+  }
+  .leg { display: flex; align-items: center; gap: 6px; }
+  .legdot { width: 12px; height: 12px; border-radius: 2px; flex-shrink: 0; }
+
+  .main {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+  }
+
+  .sidebar {
+    width: 230px;
+    flex-shrink: 0;
+    overflow-y: auto;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    height: calc(100vh - 108px);
+  }
+
+  .sec-hdr {
+    font-size: 10px;
+    font-weight: bold;
+    color: var(--text-muted);
+    padding: 8px 12px 5px;
+    background: var(--surface2);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 1;
+    font-family: 'Arial', sans-serif;
+  }
+
+  .citem {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.1s;
+    border-left: 2px solid transparent;
+  }
+  .citem:hover { background: var(--surface2); }
+  .citem.active { background: var(--blue-light); border-left-color: var(--blue); }
+  .citem.hidden { display: none; }
+
+  .cname { font-size: 13px; color: var(--text); flex: 1; line-height: 1.3; font-family: 'Arial', sans-serif; }
+  .cbadge { font-size: 10px; padding: 2px 5px; border-radius: 3px; font-weight: bold; flex-shrink: 0; font-family: 'Arial', sans-serif; }
+  .eu-badge { background: var(--blue-light); color: var(--blue-dark); }
+  .non-badge { background: var(--green-light); color: var(--green); }
+
+  .mapside {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    background: var(--bg);
+  }
+
+  .infobar {
+    padding: 12px 18px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    min-height: 78px;
+  }
+
+  .info-name { font-size: 16px; color: var(--text); }
+  .info-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; font-family: 'Arial', sans-serif; }
+  .info-links { display: flex; gap: 7px; margin-top: 8px; flex-wrap: wrap; }
+
+  .lnk {
+    font-size: 12px; padding: 4px 11px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border-strong);
+    color: var(--text);
+    text-decoration: none;
+    background: var(--surface);
+    font-family: 'Arial', sans-serif;
+    transition: background 0.1s;
+  }
+  .lnk:hover { background: var(--surface2); }
+  .lnk.pri { background: var(--blue); color: #fff; border-color: var(--blue); }
+  .lnk.pri:hover { background: var(--blue-dark); }
+
+  #mapwrap {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+  }
+  #mapwrap svg {
+    display: block; width: 100%; height: 100%;
+    min-height: 500px;
+    cursor: grab;
+  }
+  #mapwrap svg:active { cursor: grabbing; }
+
+  .cpath { stroke: #fff; stroke-width: 0.4; transition: opacity 0.12s; cursor: pointer; }
+  .cpath:hover { opacity: 0.72; }
+  .cpath.sel { stroke: var(--orange); stroke-width: 2; opacity: 1; }
+  .cpath.dimmed { opacity: 0.28; }
+  .cpath.untracked { cursor: default; }
+
+  #tt {
+    position: absolute; pointer-events: none;
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius);
+    padding: 5px 10px;
+    font-size: 12px; color: var(--text);
+    white-space: nowrap; display: none; z-index: 10;
+    font-family: 'Arial', sans-serif;
+  }
+
+  .zbtns {
+    position: absolute; bottom: 14px; right: 14px;
+    display: flex; flex-direction: column; gap: 4px; z-index: 5;
+  }
+  .zbtn {
+    width: 30px; height: 30px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--text);
+    font-size: 17px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    line-height: 1;
+    font-family: 'Arial', sans-serif;
+  }
+  .zbtn:hover { background: var(--surface2); }
+  .zbtn.reset { font-size: 13px; }
+
+  .zhint {
+    position: absolute; bottom: 14px; left: 12px;
+    font-size: 11px; color: var(--text-hint);
+    pointer-events: none;
+    font-family: 'Arial', sans-serif;
+  }
+
+  footer {
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 8px 24px;
+    font-size: 11px;
+    color: var(--text-hint);
+    font-family: 'Arial', sans-serif;
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  @media (max-width: 700px) {
+    .main { flex-direction: column; }
+    .sidebar { width: 100%; height: 220px; border-right: none; border-bottom: 1px solid var(--border); }
+    #search { width: 140px; }
+  }
+</style>
 </head>
 <body>
-    <h1>Welcome to the Embassy Alerts Page</h1>
+
+<header>
+  <div class="header-left">
+    <div class="flag-icon"></div>
+    <div>
+      <div class="header-title">US Embassy Alert Tracker — Europe</div>
+      <div class="header-sub">44 countries · real-time links to official embassy alerts</div>
+    </div>
+  </div>
+  <input id="search" type="text" placeholder="Search country...">
+</header>
+
+<div class="legend">
+  <div class="leg"><div class="legdot" style="background:#378ADD"></div>EU member state (27)</div>
+  <div class="leg"><div class="legdot" style="background:#639922"></div>Non-EU European state (17)</div>
+  <div class="leg"><div class="legdot" style="background:#C0BEB4"></div>Not tracked</div>
+</div>
+
+<div class="main">
+  <div class="sidebar" id="sidebar"></div>
+  <div class="mapside">
+    <div class="infobar" id="infobar">
+      <div class="info-name" style="color:#9e9e96">Select a country</div>
+      <div class="info-sub">Click any country on the map or in the list for direct embassy alert links</div>
+    </div>
+    <div id="mapwrap">
+      <div id="tt"></div>
+      <div class="zbtns">
+        <button class="zbtn" id="zin" title="Zoom in">+</button>
+        <button class="zbtn" id="zout" title="Zoom out">−</button>
+        <button class="zbtn reset" id="zrst" title="Reset view">⌂</button>
+      </div>
+      <div class="zhint">Scroll to zoom · drag to pan</div>
+      <svg id="mapsvg" viewBox="0 0 800 560" preserveAspectRatio="xMidYMid meet">
+        <g id="mg"></g>
+      </svg>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <span>Links go directly to official US Embassy "Messages for US Citizens" pages — updated in real time by each embassy.</span>
+  <span>Data: Natural Earth 50m · TopoJSON world-atlas v2</span>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+<script>
+const COUNTRIES = [
+  {name:"Albania",       eu:false, id:"008", alert:"https://al.usembassy.gov/category/alert/",  home:"https://al.usembassy.gov/"},
+  {name:"Andorra",       eu:false, id:"020", alert:"https://es.usembassy.gov/category/alert/", home:"https://es.usembassy.gov/"},
+  {name:"Austria",       eu:true,  id:"040", alert:"https://at.usembassy.gov/category/alert/",  home:"https://at.usembassy.gov/"},
+  {name:"Belarus",       eu:false, id:"112", alert:"https://by.usembassy.gov/category/alert/",  home:"https://by.usembassy.gov/"},
+  {name:"Belgium",       eu:true,  id:"056", alert:"https://be.usembassy.gov/category/alert/",  home:"https://be.usembassy.gov/"},
+  {name:"Bosnia & Herz.",eu:false, id:"070", alert:"https://ba.usembassy.gov/category/alert/",  home:"https://ba.usembassy.gov/"},
+  {name:"Bulgaria",      eu:true,  id:"100", alert:"https://bg.usembassy.gov/category/alert/",  home:"https://bg.usembassy.gov/"},
+  {name:"Croatia",       eu:true,  id:"191", alert:"https://hr.usembassy.gov/category/alert/",  home:"https://hr.usembassy.gov/"},
+  {name:"Cyprus",        eu:true,  id:"196", alert:"https://cy.usembassy.gov/category/alert/",  home:"https://cy.usembassy.gov/"},
+  {name:"Czech Republic",eu:true,  id:"203", alert:"https://cz.usembassy.gov/category/alert/",  home:"https://cz.usembassy.gov/"},
+  {name:"Denmark",       eu:true,  id:"208", alert:"https://dk.usembassy.gov/category/alert/",  home:"https://dk.usembassy.gov/"},
+  {name:"Estonia",       eu:true,  id:"233", alert:"https://ee.usembassy.gov/category/alert/",  home:"https://ee.usembassy.gov/"},
+  {name:"Finland",       eu:true,  id:"246", alert:"https://fi.usembassy.gov/category/alert/",  home:"https://fi.usembassy.gov/"},
+  {name:"France",        eu:true,  id:"250", alert:"https://fr.usembassy.gov/category/alert/",  home:"https://fr.usembassy.gov/"},
+  {name:"Germany",       eu:true,  id:"276", alert:"https://de.usembassy.gov/category/alert/",  home:"https://de.usembassy.gov/"},
+  {name:"Greece",        eu:true,  id:"300", alert:"https://gr.usembassy.gov/category/alert/",  home:"https://gr.usembassy.gov/"},
+  {name:"Hungary",       eu:true,  id:"348", alert:"https://hu.usembassy.gov/category/alert/",  home:"https://hu.usembassy.gov/"},
+  {name:"Iceland",       eu:false, id:"352", alert:"https://is.usembassy.gov/category/alert/",  home:"https://is.usembassy.gov/"},
+  {name:"Ireland",       eu:true,  id:"372", alert:"https://ie.usembassy.gov/category/alert/",  home:"https://ie.usembassy.gov/"},
+  {name:"Italy",         eu:true,  id:"380", alert:"https://it.usembassy.gov/category/alert/",  home:"https://it.usembassy.gov/"},
+  {name:"Kosovo",        eu:false, id:"kosovo", alert:"https://xk.usembassy.gov/category/alert/", home:"https://xk.usembassy.gov/"},
+  {name:"Latvia",        eu:true,  id:"428", alert:"https://lv.usembassy.gov/category/alert/",  home:"https://lv.usembassy.gov/"},
+  {name:"Liechtenstein", eu:false, id:"438", alert:"https://ch.usembassy.gov/category/alert/",  home:"https://ch.usembassy.gov/"},
+  {name:"Lithuania",     eu:true,  id:"440", alert:"https://lt.usembassy.gov/category/alert/",  home:"https://lt.usembassy.gov/"},
+  {name:"Luxembourg",    eu:true,  id:"442", alert:"https://lu.usembassy.gov/category/alert/",  home:"https://lu.usembassy.gov/"},
+  {name:"Malta",         eu:true,  id:"470", alert:"https://mt.usembassy.gov/category/alert/",  home:"https://mt.usembassy.gov/"},
+  {name:"Moldova",       eu:false, id:"498", alert:"https://md.usembassy.gov/category/alert/",  home:"https://md.usembassy.gov/"},
+  {name:"Monaco",        eu:false, id:"492", alert:"https://fr.usembassy.gov/category/alert/",  home:"https://fr.usembassy.gov/"},
+  {name:"Montenegro",    eu:false, id:"499", alert:"https://me.usembassy.gov/category/alert/",  home:"https://me.usembassy.gov/"},
+  {name:"Netherlands",   eu:true,  id:"528", alert:"https://nl.usembassy.gov/category/alert/",  home:"https://nl.usembassy.gov/"},
+  {name:"North Macedonia",eu:false,id:"807", alert:"https://mk.usembassy.gov/category/alert/",  home:"https://mk.usembassy.gov/"},
+  {name:"Norway",        eu:false, id:"578", alert:"https://no.usembassy.gov/category/alert/",  home:"https://no.usembassy.gov/"},
+  {name:"Poland",        eu:true,  id:"616", alert:"https://pl.usembassy.gov/category/alert/",  home:"https://pl.usembassy.gov/"},
+  {name:"Portugal",      eu:true,  id:"620", alert:"https://pt.usembassy.gov/category/alert/",  home:"https://pt.usembassy.gov/"},
+  {name:"Romania",       eu:true,  id:"642", alert:"https://ro.usembassy.gov/category/alert/",  home:"https://ro.usembassy.gov/"},
+  {name:"Russia",        eu:false, id:"643", alert:"https://ru.usembassy.gov/category/alert/",  home:"https://ru.usembassy.gov/"},
+  {name:"San Marino",    eu:false, id:"674", alert:"https://it.usembassy.gov/category/alert/",  home:"https://it.usembassy.gov/"},
+  {name:"Serbia",        eu:false, id:"688", alert:"https://rs.usembassy.gov/category/alert/",  home:"https://rs.usembassy.gov/"},
+  {name:"Slovakia",      eu:true,  id:"703", alert:"https://sk.usembassy.gov/category/alert/",  home:"https://sk.usembassy.gov/"},
+  {name:"Slovenia",      eu:true,  id:"705", alert:"https://si.usembassy.gov/category/alert/",  home:"https://si.usembassy.gov/"},
+  {name:"Spain",         eu:true,  id:"724", alert:"https://es.usembassy.gov/category/alert/",  home:"https://es.usembassy.gov/"},
+  {name:"Sweden",        eu:true,  id:"752", alert:"https://se.usembassy.gov/category/alert/",  home:"https://se.usembassy.gov/"},
+  {name:"Switzerland",   eu:false, id:"756", alert:"https://ch.usembassy.gov/category/alert/",  home:"https://ch.usembassy.gov/"},
+  {name:"Ukraine",       eu:false, id:"804", alert:"https://ua.usembassy.gov/category/alert/",  home:"https://ua.usembassy.gov/"},
+  {name:"United Kingdom",eu:false, id:"826", alert:"https://uk.usembassy.gov/category/alert/",  home:"https://uk.usembassy.gov/"},
+];
+
+const byId = {};
+COUNTRIES.forEach(c => byId[c.id] = c);
+const TRAVEL = "https://travel.state.gov/content/travel/en/traveladvisories/traveladvisories.html/";
+let selected = null;
+let currentK = 1;
+
+function renderSidebar(filter) {
+  const sb = document.getElementById('sidebar');
+  const q = (filter || '').toLowerCase();
+  const eu = COUNTRIES.filter(c => c.eu).sort((a, b) => a.name.localeCompare(b.name));
+  const non = COUNTRIES.filter(c => !c.eu).sort((a, b) => a.name.localeCompare(b.name));
+  let html = '<div class="sec-hdr">EU Member States (27)</div>';
+  eu.forEach(c => {
+    const hide = q && !c.name.toLowerCase().includes(q) ? ' hidden' : '';
+    const act = selected && selected.id === c.id ? ' active' : '';
+    html += `<div class="citem${act}${hide}" data-id="${c.id}"><span class="cname">${c.name}</span><span class="cbadge eu-badge">EU</span></div>`;
+  });
+  html += '<div class="sec-hdr">Non-EU European States (17)</div>';
+  non.forEach(c => {
+    const hide = q && !c.name.toLowerCase().includes(q) ? ' hidden' : '';
+    const act = selected && selected.id === c.id ? ' active' : '';
+    html += `<div class="citem${act}${hide}" data-id="${c.id}"><span class="cname">${c.name}</span><span class="cbadge non-badge">Non-EU</span></div>`;
+  });
+  sb.innerHTML = html;
+  sb.querySelectorAll('.citem').forEach(el => el.addEventListener('click', () => selectCountry(el.dataset.id, true)));
+}
+
+function updateInfobar() {
+  const ib = document.getElementById('infobar');
+  if (!selected) {
+    ib.innerHTML = `<div class="info-name" style="color:#9e9e96">Select a country</div><div class="info-sub">Click any country on the map or in the list for direct embassy alert links</div>`;
+    return;
+  }
+  const c = selected;
+  const yr = new Date().getFullYear();
+  ib.innerHTML = `
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <div>
+        <div class="info-name">${c.name}</div>
+        <div class="info-sub">${c.eu ? 'EU member state' : 'Non-EU European state'} &middot; ${c.home.replace('https://', '').split('/')[0]}</div>
+      </div>
+    </div>
+    <div class="info-links">
+      <a class="lnk pri" href="${c.alert}" target="_blank" rel="noopener">Latest alerts</a>
+      <a class="lnk" href="${c.home}" target="_blank" rel="noopener">Embassy home</a>
+      <a class="lnk" href="${TRAVEL}" target="_blank" rel="noopener">State Dept advisory</a>
+      <a class="lnk" href="https://www.google.com/search?q=US+embassy+${encodeURIComponent(c.name)}+security+alert+${yr}" target="_blank" rel="noopener">Search ${yr} alerts</a>
+    </div>`;
+}
+
+function selectCountry(id, scrollSidebar) {
+  selected = byId[id] || null;
+  renderSidebar(document.getElementById('search').value);
+  updateInfobar();
+  d3.selectAll('.cpath')
+    .classed('sel', d => d.id === id)
+    .classed('dimmed', d => !!selected && d.id !== id && !!byId[d.id]);
+  if (scrollSidebar && selected) {
+    const el = document.querySelector(`.citem[data-id="${id}"]`);
+    if (el) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
+}
+
+document.getElementById('search').addEventListener('input', function () { renderSidebar(this.value); });
+
+const svg = d3.select('#mapsvg');
+const g = d3.select('#mg');
+const W = 800, H = 560;
+
+const proj = d3.geoMercator().center([13, 56]).scale(580).translate([W / 2, H / 2]);
+const pathGen = d3.geoPath(proj);
+
+const zoom = d3.zoom().scaleExtent([0.7, 14]).on('zoom', event => {
+  currentK = event.transform.k;
+  g.attr('transform', event.transform);
+  g.selectAll('.cpath').attr('stroke-width', d => {
+    const isSel = selected && d.id === selected.id;
+    return (isSel ? 2 : 0.4) / currentK;
+  });
+});
+
+svg.call(zoom);
+svg.on('click', function (event) {
+  if (event.target === this || event.target.tagName === 'svg') {
+    selected = null;
+    renderSidebar(document.getElementById('search').value);
+    updateInfobar();
+    d3.selectAll('.cpath').classed('sel', false).classed('dimmed', false);
+  }
+});
+
+document.getElementById('zin').addEventListener('click', () => svg.transition().duration(280).call(zoom.scaleBy, 1.5));
+document.getElementById('zout').addEventListener('click', () => svg.transition().duration(280).call(zoom.scaleBy, 0.67));
+document.getElementById('zrst').addEventListener('click', () => svg.transition().duration(380).call(zoom.transform, d3.zoomIdentity));
+
+const tt = document.getElementById('tt');
+const mw = document.getElementById('mapwrap');
+
+d3.json('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-50m.json').then(world => {
+  const features = topojson.feature(world, world.objects.countries).features;
+
+  g.selectAll('path')
+    .data(features)
+    .join('path')
+    .attr('class', d => 'cpath' + (byId[d.id] ? '' : ' untracked'))
+    .attr('fill', d => {
+      const c = byId[d.id];
+      if (!c) return '#C0BEB4';
+      return c.eu ? '#378ADD' : '#639922';
+    })
+    .attr('d', pathGen)
+    .on('mousemove', function (event, d) {
+      const c = byId[d.id];
+      if (!c) { tt.style.display = 'none'; return; }
+      const rect = mw.getBoundingClientRect();
+      tt.style.display = 'block';
+      tt.style.left = (event.clientX - rect.left + 14) + 'px';
+      tt.style.top = (event.clientY - rect.top - 36) + 'px';
+      tt.textContent = c.name + (c.eu ? ' · EU member' : ' · Non-EU');
+    })
+    .on('mouseleave', () => { tt.style.display = 'none'; })
+    .on('click', function (event, d) {
+      event.stopPropagation();
+      if (!byId[d.id]) return;
+      selectCountry(d.id, true);
+    });
+
+  g.selectAll('.untracked').style('cursor', 'default');
+
+  const kosovoGeo = {
+    type: "Feature",
+    id: "kosovo",
+    geometry: {
+      type: "Polygon",
+      coordinates: [[[20.59, 42.03], [21.79, 42.47], [22.35, 42.32], [22.24, 41.99], [21.66, 41.96], [21.29, 42.13], [20.59, 42.03]]]
+    }
+  };
+
+  g.append('path')
+    .datum(kosovoGeo)
+    .attr('class', 'cpath')
+    .attr('fill', '#639922')
+    .attr('d', pathGen)
+    .on('mousemove', function (event) {
+      const rect = mw.getBoundingClientRect();
+      tt.style.display = 'block';
+      tt.style.left = (event.clientX - rect.left + 14) + 'px';
+      tt.style.top = (event.clientY - rect.top - 36) + 'px';
+      tt.textContent = 'Kosovo · Non-EU';
+    })
+    .on('mouseleave', () => { tt.style.display = 'none'; })
+    .on('click', function (event) {
+      event.stopPropagation();
+      selectCountry('kosovo', true);
+    });
+
+}).catch(() => {
+  document.getElementById('mapwrap').innerHTML = '<div style="padding:2rem;color:#9e9e96;font-size:13px;font-family:Arial,sans-serif">Map topology could not load. Requires an internet connection to fetch Natural Earth map data from cdn.jsdelivr.net.</div>';
+});
+
+renderSidebar('');
+updateInfobar();
+</script>
 </body>
 </html>
